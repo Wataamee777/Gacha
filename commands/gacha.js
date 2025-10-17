@@ -11,7 +11,7 @@ const client = new Client({
 // =============================
 // スラッシュコマンド定義
 // =============================
-const gachaCommand = {
+export const gachaCommand = {
   data: new SlashCommandBuilder()
     .setName('gacha')
     .setDescription('ガチャ管理コマンド')
