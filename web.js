@@ -57,7 +57,7 @@ app.get('/auth/callback', async (req, res) => {
   params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
   params.append('grant_type', 'authorization_code');
   params.append('code', code);
-  params.append('redirect_uri', process.env.DISCORD_CALLBACK);
+  params.append('redirect_uri', process.env.CALLBACK_URL);
 
   const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
     method: 'POST',
