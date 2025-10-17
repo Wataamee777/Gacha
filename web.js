@@ -2,9 +2,12 @@ import express from 'express';
 import session from 'express-session';
 import fetch from 'node-fetch';
 import db from './db.js';
+import path from 'path';
 import 'dotenv/config';
 
 const app = express();
+
+// --------- ミドルウェア ----------
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
@@ -12,7 +15,11 @@ app.use(session({
   resave: false,
   saveUninitialized: true
 }));
+
+// static & views
+app.use('/static', express.static(path.join(process.cwd(), 'public')));
 app.set('view engine', 'ejs');
+app.set('views', path.join(process.cwd(), 'views'));
 
 // ---------- Discord OAuth2 URL ----------
 const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.DISCORD_CALLBACK)}&response_type=code&scope=identify%20guilds`;
@@ -33,19 +40,20 @@ app.get('/auth/callback', async (req, res) => {
   const code = req.query.code;
   if (!code) return res.send('Error: code missing');
 
-  // トークン取得
   const params = new URLSearchParams();
   params.append('client_id', process.env.DISCORD_CLIENT_ID);
   params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
   params.append('grant_type', 'authorization_code');
   params.append('code', code);
   params.append('redirect_uri', process.env.DISCORD_CALLBACK);
+
   const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
     method: 'POST',
     body: params,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   });
   const tokenData = await tokenRes.json();
+
   const userRes = await fetch('https://discord.com/api/users/@me', {
     headers: { Authorization: `Bearer ${tokenData.access_token}` }
   });
@@ -57,26 +65,23 @@ app.get('/auth/callback', async (req, res) => {
 
 // ---------- ダッシュボード ----------
 app.get('/dashboard', checkAuth, (req, res) => {
-  res.send(`<h1>ようこそ ${req.session.user.username}</h1>
-    <a href="/gacha/list">ガチャ管理画面</a>`);
+  res.render('dashboard', { user: req.session.user });
 });
 
 app.get('/', (req, res) => {
-  res.send(`<h1>ようこそ Gachabot</h1>
-    <a href="/auth/login">login as</a>`);
+  res.render('index');
 });
 
 // ---------- ガチャ一覧 ----------
 app.get('/gacha/:guildId', checkAuth, async (req, res) => {
-  // サーバー管理権限を確認する場合は guilds の情報と照合
   const gachas = (await db.query('SELECT * FROM gachas WHERE guild_id=$1', [req.params.guildId])).rows;
-  res.render('gacha_list', { gachas, user: req.session.user });
+  res.render('gacha_list', { gachas, user: req.session.user, guildId: req.params.guildId });
 });
 
 // ---------- ガチャ作成 ----------
 app.post('/gacha/:guildId/create', checkAuth, async (req, res) => {
-  const { name, plex, channel, role } = req.body;
-  await db.addGacha(req.params.guildId, { name, plex, channel, role });
+  const { name, plex, channel, role, delete_after_days } = req.body;
+  await db.addGacha(req.params.guildId, { name, plex, channel, role, delete_after_days });
   res.redirect(`/gacha/${req.params.guildId}`);
 });
 
