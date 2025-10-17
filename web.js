@@ -61,6 +61,11 @@ app.get('/dashboard', checkAuth, (req, res) => {
     <a href="/gacha/list">ガチャ管理画面</a>`);
 });
 
+app.get('/', (req, res) => {
+  res.send(`<h1>ようこそ Gachabot</h1>
+    <a href="/auth/login">login as</a>`);
+});
+
 // ---------- ガチャ一覧 ----------
 app.get('/gacha/:guildId', checkAuth, async (req, res) => {
   // サーバー管理権限を確認する場合は guilds の情報と照合
