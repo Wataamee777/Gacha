@@ -29,16 +29,19 @@
   <div class="gacha-container">
     <% gachas.forEach(g => { %>
       <div class="gacha-card">
-        <h2><%= g.name %></h2>
-        <p>Channel: <%= g.channel || "未設定" %></p>
-        <p>Role: <%= g.role || "なし" %></p>
-        <p>Plex: <%= g.plex || g.name %></p>
-        <p>削除日数: <%= g.delete_after_days || 10 %></p>
-        <form method="POST" action="/gacha/<%= guildId %>/edit">
-          <input type="hidden" name="name" value="<%= g.name %>">
-          <button type="submit" name="action" value="edit">編集</button>
-          <button type="submit" name="action" value="delete">削除</button>
-        </form>
+<form method="POST" action="/gacha/<%= guildId %>/edit">
+  <input type="hidden" name="name" value="<%= gacha.name %>">
+  <input type="text" name="editname" placeholder="新しい名前">
+  <input type="text" name="plex" placeholder="反応文言">
+  <input type="text" name="channel" placeholder="チャンネルID">
+  <input type="text" name="role" placeholder="ロールID">
+  <input type="number" name="delete_after_days" placeholder="削除日数">
+  <label>
+    <input type="checkbox" name="delete_now"> 即削除
+  </label>
+  <button type="submit" class="btn">編集</button>
+</form>
+
       </div>
     <% }) %>
   </div>
