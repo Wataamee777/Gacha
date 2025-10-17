@@ -34,7 +34,7 @@
         <p>Role: <%= g.role || "なし" %></p>
         <p>Plex: <%= g.plex || g.name %></p>
         <p>削除日数: <%= g.delete_after_days || 10 %></p>
-        <form method="POST" action="/gachas/edit">
+        <form method="POST" action="/gacha/<%= guildId %>/edit">
           <input type="hidden" name="name" value="<%= g.name %>">
           <button type="submit" name="action" value="edit">編集</button>
           <button type="submit" name="action" value="delete">削除</button>
@@ -44,7 +44,7 @@
   </div>
 
   <h2 style="color:#00ffff; margin-top:3rem;">新しいガチャを追加</h2>
-  <form method="POST" action="/gachas/create">
+  <form method="POST" action="/gacha/<%= guildId %>/create">
     <input type="text" name="name" placeholder="ガチャ名" required>
     <input type="text" name="plex" placeholder="反応文言（任意）">
     <input type="text" name="channel" placeholder="チャンネルID（任意）">
