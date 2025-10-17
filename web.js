@@ -27,10 +27,12 @@ app.use(
     secret: process.env.SESSION_SECRET || 'supersecret',
     resave: false,
     saveUninitialized: false,
+    proxy: true, // ← Renderでは必須！
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7日
-      secure: process.env.NODE_ENV === 'production', // HTTPSでのみ送信
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: true,                    // HTTPS限定
+      httpOnly: true,
+      sameSite: "none",                // ← OAuth通過時にクッキー削除されないため必須！
     },
   })
 );
