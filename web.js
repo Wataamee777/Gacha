@@ -78,6 +78,21 @@ app.get('/gacha/:guildId', checkAuth, async (req, res) => {
   res.render('gacha_list', { gachas, user: req.session.user, guildId: req.params.guildId });
 });
 
+// ---------- ガチャ編集 ----------
+app.post('/gacha/:guildId/edit', checkAuth, async (req, res) => {
+  const { name, editname, plex, channel, role, delete_after_days, delete_now } = req.body;
+
+  if (delete_now) {
+    await db.deleteGacha(req.params.guildId, name);
+    return res.redirect(`/gacha/${req.params.guildId}`);
+  }
+
+  const edits = { editname, plex, channel, role, delete_after_days };
+  const updated = await db.updateGacha(req.params.guildId, name, edits);
+
+  res.redirect(`/gacha/${req.params.guildId}`);
+});
+
 // ---------- ガチャ作成 ----------
 app.post('/gacha/:guildId/create', checkAuth, async (req, res) => {
   const { name, plex, channel, role, delete_after_days } = req.body;
