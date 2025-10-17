@@ -1,119 +1,133 @@
+// web.js
 import express from 'express';
 import session from 'express-session';
 import pg from 'pg';
 import pgSession from 'connect-pg-simple';
 import fetch from 'node-fetch';
-import db from './db.js'; // 既存のPG接続
+import db from './db.js';
 import 'dotenv/config';
 
 const app = express();
+
+// ---------- Middleware ----------
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-// ---------- Postgres セッションストア ----------
-const PgStore = pgSession(session);
-
-app.use(session({
-  store: new PgStore({
-    pool: db.pool, // db.js 内の pg Pool を利用
-    tableName: 'session',
-    createTableIfMissing: true
-  }),
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7日間保持
-    secure: process.env.NODE_ENV === 'production', // HTTPS の場合だけ
-    sameSite: 'lax'
-  }
-}));
-
-// ---------- view ----------
 app.set('view engine', 'ejs');
 app.use('/static', express.static('public'));
 
-// ---------- Discord OAuth2 URL ----------
-const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.DISCORD_CALLBACK)}&response_type=code&scope=identify%20guilds`;
+// ---------- Postgres セッションストア ----------
+const PgStore = pgSession(session);
+app.use(
+  session({
+    store: new PgStore({
+      pool: db.pool,
+      tableName: 'session',
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || 'supersecret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7日
+      secure: process.env.NODE_ENV === 'production', // HTTPSでのみ送信
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    },
+  })
+);
 
-// ---------- 認証チェック ----------
-const checkAuth = (req, res, next) => {
+// ---------- Discord OAuth URL ----------
+const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${
+  process.env.DISCORD_CLIENT_ID
+}&redirect_uri=${encodeURIComponent(
+  process.env.DISCORD_CALLBACK
+)}&response_type=code&scope=identify%20guilds`;
+
+// ---------- Middleware: 認証チェック ----------
+function checkAuth(req, res, next) {
   if (!req.session.user) return res.redirect('/auth/login');
   next();
-};
+}
 
-// ---------- ログイン ----------
+// ---------- Routes ----------
+
+// 🏠 ホーム
+app.get('/', (req, res) => {
+  res.render('index', { user: req.session.user || null });
+});
+
+// 🔑 Discordログイン
 app.get('/auth/login', (req, res) => {
   res.redirect(discordAuthUrl);
 });
 
-// ---------- コールバック ----------
+// 🔁 Discordコールバック
 app.get('/auth/callback', async (req, res) => {
   const code = req.query.code;
-  if (!code) return res.send('Error: code missing');
+  if (!code) return res.status(400).send('Error: missing code');
 
-  const params = new URLSearchParams();
-  params.append('client_id', process.env.DISCORD_CLIENT_ID);
-  params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
-  params.append('grant_type', 'authorization_code');
-  params.append('code', code);
-  params.append('redirect_uri', process.env.CALLBACK_URL);
+  try {
+    // トークン取得
+    const params = new URLSearchParams();
+    params.append('client_id', process.env.DISCORD_CLIENT_ID);
+    params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('redirect_uri', process.env.DISCORD_CALLBACK);
 
-  const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
-    method: 'POST',
-    body: params,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  });
-  const tokenData = await tokenRes.json();
+    const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      body: params,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
 
-  const userRes = await fetch('https://discord.com/api/users/@me', {
-    headers: { Authorization: `Bearer ${tokenData.access_token}` }
-  });
-  const user = await userRes.json();
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token)
+      return res.status(401).send('Discord OAuth failed.');
 
-  req.session.user = user;
-  res.redirect('/dashboard');
+    // ユーザー情報取得
+    const userRes = await fetch('https://discord.com/api/users/@me', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const user = await userRes.json();
+
+    req.session.user = user;
+    res.redirect('/dashboard');
+  } catch (err) {
+    console.error('OAuth Error:', err);
+    res.status(500).send('Internal error during login');
+  }
 });
 
-// ---------- ダッシュボード ----------
+// 📊 ダッシュボード
 app.get('/dashboard', checkAuth, (req, res) => {
   res.render('dashboard', { user: req.session.user });
 });
 
-// ---------- ホーム ----------
-app.get('/', (req, res) => {
-  res.render('index');
-});
-
-// ---------- ガチャ一覧 ----------
+// 🎰 ガチャ一覧
 app.get('/gacha/:guildId', checkAuth, async (req, res) => {
   const gachas = (await db.query('SELECT * FROM gachas WHERE guild_id=$1', [req.params.guildId])).rows;
   res.render('gacha_list', { gachas, user: req.session.user, guildId: req.params.guildId });
 });
 
-// ---------- ガチャ作成 ----------
+// ➕ ガチャ作成
 app.post('/gacha/:guildId/create', checkAuth, async (req, res) => {
   const { name, plex, channel, role, delete_after_days } = req.body;
   await db.addGacha(req.params.guildId, { name, plex, channel, role, delete_after_days });
   res.redirect(`/gacha/${req.params.guildId}`);
 });
 
-// ---------- ガチャ編集 ----------
+// ✏️ ガチャ編集
 app.post('/gacha/:guildId/edit', checkAuth, async (req, res) => {
   const { name, editname, plex, channel, role, delete_after_days, delete_now } = req.body;
-
   if (delete_now) {
     await db.deleteGacha(req.params.guildId, name);
-    return res.redirect(`/gacha/${req.params.guildId}`);
+  } else {
+    await db.updateGacha(req.params.guildId, name, { editname, plex, channel, role, delete_after_days });
   }
-
-  const edits = { editname, plex, channel, role, delete_after_days };
-  await db.updateGacha(req.params.guildId, name, edits);
-
   res.redirect(`/gacha/${req.params.guildId}`);
 });
 
-// ---------- JSONインポート ----------
+// 📦 JSONインポート
 app.post('/gacha/:guildId/import', checkAuth, async (req, res) => {
   const data = req.body.json;
   for (const g of data) {
@@ -123,11 +137,18 @@ app.post('/gacha/:guildId/import', checkAuth, async (req, res) => {
   res.redirect(`/gacha/${req.params.guildId}`);
 });
 
-// ---------- JSONエクスポート ----------
+// 💾 JSONエクスポート
 app.get('/gacha/:guildId/export', checkAuth, async (req, res) => {
   const gachas = (await db.query('SELECT * FROM gachas WHERE guild_id=$1', [req.params.guildId])).rows;
   for (const g of gachas) g.items = await db.getItems(req.params.guildId, g.name);
   res.json(gachas);
 });
 
-app.listen(3000, () => console.log('Web管理画面 http://localhost:3000'));
+// 🚪 ログアウト
+app.get('/auth/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/'));
+});
+
+// ---------- Start ----------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🌐 Web管理画面起動: ${PORT}`));
