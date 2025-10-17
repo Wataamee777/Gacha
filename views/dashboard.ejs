@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div style="text-align:center; margin-top:3rem;">
+    <h1>ようこそ <%= user.username %> さん</h1>
+    <p>Discord ID: <%= user.id %></p>
+    <a class="btn" href="/gacha/<%= user.id %>">ガチャ管理画面へ</a>
+  </div>
+</body>
+</html>
