@@ -1,25 +1,37 @@
 import express from 'express';
 import session from 'express-session';
+import pg from 'pg';
+import pgSession from 'connect-pg-simple';
 import fetch from 'node-fetch';
-import db from './db.js';
-import path from 'path';
+import db from './db.js'; // 既存のPG接続
 import 'dotenv/config';
 
 const app = express();
-
-// --------- ミドルウェア ----------
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// ---------- Postgres セッションストア ----------
+const PgStore = pgSession(session);
+
 app.use(session({
+  store: new PgStore({
+    pool: db.pool, // db.js 内の pg Pool を利用
+    tableName: 'session',
+    createTableIfMissing: true
+  }),
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: false,
+  cookie: { 
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7日間保持
+    secure: process.env.NODE_ENV === 'production', // HTTPS の場合だけ
+    sameSite: 'lax'
+  }
 }));
 
-// static & views
-app.use('/static', express.static(path.join(process.cwd(), 'public')));
+// ---------- view ----------
 app.set('view engine', 'ejs');
-app.set('views', path.join(process.cwd(), 'views'));
+app.use('/static', express.static('public'));
 
 // ---------- Discord OAuth2 URL ----------
 const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.DISCORD_CALLBACK)}&response_type=code&scope=identify%20guilds`;
@@ -68,6 +80,7 @@ app.get('/dashboard', checkAuth, (req, res) => {
   res.render('dashboard', { user: req.session.user });
 });
 
+// ---------- ホーム ----------
 app.get('/', (req, res) => {
   res.render('index');
 });
@@ -76,6 +89,13 @@ app.get('/', (req, res) => {
 app.get('/gacha/:guildId', checkAuth, async (req, res) => {
   const gachas = (await db.query('SELECT * FROM gachas WHERE guild_id=$1', [req.params.guildId])).rows;
   res.render('gacha_list', { gachas, user: req.session.user, guildId: req.params.guildId });
+});
+
+// ---------- ガチャ作成 ----------
+app.post('/gacha/:guildId/create', checkAuth, async (req, res) => {
+  const { name, plex, channel, role, delete_after_days } = req.body;
+  await db.addGacha(req.params.guildId, { name, plex, channel, role, delete_after_days });
+  res.redirect(`/gacha/${req.params.guildId}`);
 });
 
 // ---------- ガチャ編集 ----------
@@ -88,15 +108,8 @@ app.post('/gacha/:guildId/edit', checkAuth, async (req, res) => {
   }
 
   const edits = { editname, plex, channel, role, delete_after_days };
-  const updated = await db.updateGacha(req.params.guildId, name, edits);
+  await db.updateGacha(req.params.guildId, name, edits);
 
-  res.redirect(`/gacha/${req.params.guildId}`);
-});
-
-// ---------- ガチャ作成 ----------
-app.post('/gacha/:guildId/create', checkAuth, async (req, res) => {
-  const { name, plex, channel, role, delete_after_days } = req.body;
-  await db.addGacha(req.params.guildId, { name, plex, channel, role, delete_after_days });
   res.redirect(`/gacha/${req.params.guildId}`);
 });
 
