@@ -77,7 +77,7 @@ async function registerCommands() {
   try {
     console.log('🌍 /gacha コマンド登録中...');
     await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
+      Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
       { body: [gachaCommand.data.toJSON()] }
     );
     console.log('✅ /gacha コマンド登録完了');
