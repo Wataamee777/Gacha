@@ -2,58 +2,50 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gacha管理画面</title>
-  <link rel="stylesheet" href="/style.css">
-  <style>
-    /* ---- CSS 内蔵版 (style.cssがない場合用) ---- */
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#0f0f1a; color:#f0f0f0; min-height:100vh; padding:2rem; }
-    h1 { text-align:center; font-size:2rem; margin-bottom:2rem; color:#00ffff; text-shadow:0 0 5px #00ffff,0 0 10px #00ffff; }
-    .gacha-container { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1.5rem; }
-    .gacha-card { background:linear-gradient(145deg,#1a1a2e,#162447); border-radius:12px; padding:1.5rem; box-shadow:0 4px 15px rgba(0,255,255,0.2); transition:transform 0.2s ease,box-shadow 0.2s ease; }
-    .gacha-card:hover { transform:translateY(-5px); box-shadow:0 8px 20px rgba(0,255,255,0.4); }
-    .gacha-card h2 { font-size:1.3rem; margin-bottom:0.5rem; color:#00ffff; }
-    .gacha-card p { font-size:0.9rem; margin-bottom:0.5rem; color:#c0c0c0; }
-    .gacha-card button { padding:0.5rem 1rem; border:none; border-radius:8px; background-color:#00ffff; color:#0f0f1a; font-weight:bold; cursor:pointer; transition:background-color 0.2s ease, transform 0.2s ease; margin-right:0.5rem; }
-    .gacha-card button:hover { background-color:#00cfcf; transform:scale(1.05); }
-    form { margin-top:2rem; display:flex; flex-wrap:wrap; gap:1rem; align-items:center; }
-    form input, form select { padding:0.5rem 0.8rem; border-radius:6px; border:none; outline:none; }
-    form button { background-color:#00ffff; border-radius:8px; padding:0.5rem 1rem; font-weight:bold; cursor:pointer; }
-    form button:hover { background-color:#00cfcf; transform:scale(1.05); }
-  </style>
+  <title>ガチャ一覧</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <h1>Gacha管理画面</h1>
+  <h1>🎰 ガチャ一覧（<%= guildId %>）</h1>
 
-  <div class="gacha-container">
-    <% gachas.forEach(g => { %>
+  <p>ログイン中：<%= user.username %>#<%= user.discriminator %></p>
+  <a href="/auth/logout">ログアウト</a>
+
+  <hr>
+
+  <% if (gachas.length === 0) { %>
+    <p>まだガチャがありません。</p>
+  <% } else { %>
+    <% gachas.forEach(gacha => { %>  <!-- ← ← ここ修正！ -->
       <div class="gacha-card">
-<form method="POST" action="/gacha/<%= guildId %>/edit">
-  <input type="hidden" name="name" value="<%= gacha.name %>">
-  <input type="text" name="editname" placeholder="新しい名前">
-  <input type="text" name="plex" placeholder="反応文言">
-  <input type="text" name="channel" placeholder="チャンネルID">
-  <input type="text" name="role" placeholder="ロールID">
-  <input type="number" name="delete_after_days" placeholder="削除日数">
-  <label>
-    <input type="checkbox" name="delete_now"> 即削除
-  </label>
-  <button type="submit" class="btn">編集</button>
-</form>
+        <h2><%= gacha.name %></h2>
+        <p>反応文言: <%= gacha.plex || 'なし' %></p>
+        <p>チャンネル: <%= gacha.channel || '未設定' %></p>
+        <p>ロール: <%= gacha.role || '未設定' %></p>
 
+        <form method="POST" action="/gacha/<%= guildId %>/edit">
+          <input type="hidden" name="name" value="<%= gacha.name %>">
+          <input type="text" name="editname" placeholder="新しい名前">
+          <input type="text" name="plex" placeholder="反応文言">
+          <input type="text" name="channel" placeholder="チャンネルID">
+          <input type="text" name="role" placeholder="ロールID">
+          <input type="number" name="delete_after_days" placeholder="削除日数">
+          <label><input type="checkbox" name="delete_now" value="true"> 即削除</label>
+          <button type="submit">更新</button>
+        </form>
       </div>
-    <% }) %>
-  </div>
+    <% }); %>
+  <% } %>
 
-  <h2 style="color:#00ffff; margin-top:3rem;">新しいガチャを追加</h2>
+  <hr>
+  <h2>➕ 新しいガチャを作成</h2>
   <form method="POST" action="/gacha/<%= guildId %>/create">
     <input type="text" name="name" placeholder="ガチャ名" required>
-    <input type="text" name="plex" placeholder="反応文言（任意）">
-    <input type="text" name="channel" placeholder="チャンネルID（任意）">
-    <input type="text" name="role" placeholder="ロールID（任意）">
-    <input type="number" name="delete_after_days" placeholder="削除日数（任意）" min="1">
-    <button type="submit">追加</button>
+    <input type="text" name="plex" placeholder="反応文言">
+    <input type="text" name="channel" placeholder="チャンネルID">
+    <input type="text" name="role" placeholder="ロールID">
+    <input type="number" name="delete_after_days" placeholder="削除日数">
+    <button type="submit">作成</button>
   </form>
 </body>
 </html>
