@@ -162,6 +162,24 @@ app.post('/gacha/:guildId/:gachaName/edititem/:itemName', checkAuth, async (req,
   res.redirect(`/gacha/${guildId}`);
 });
 
+// ===== アイテム削除 =====
+app.post("/gacha/:guild_id/:gacha_name/deleteitem/:item_name", async (req, res) => {
+  const { guild_id, gacha_name, item_name } = req.params;
+
+  try {
+    // DB削除
+    await db.query(
+      `DELETE FROM gacha_items WHERE guild_id=$1 AND gacha_name=$2 AND item_name=$3`,
+      [guild_id, gacha_name, item_name]
+    );
+
+    // 成功メッセージを返す or リダイレクト
+    res.redirect(`/gacha/${guild_id}/${gacha_name}`); // ← 一覧ページに戻るとか
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("削除に失敗しました。");
+  }
+});
 
 // 📦 JSONインポート
 app.post('/gacha/:guildId/import', checkAuth, async (req, res) => {
