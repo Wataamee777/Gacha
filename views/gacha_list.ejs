@@ -2,74 +2,69 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ガチャ一覧</title>
+  <title>🎲 ガチャ一覧</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <h1>🎰 ガチャ一覧（<%= guildId %>）</h1>
+  <h1>🎰 ガチャ一覧</h1>
 
-  <p>ログイン中：<%= user.username %>#<%= user.discriminator %></p>
-  <a href="/auth/logout">ログアウト</a>
-
-  <hr>
-
-  <% if (gachas.length === 0) { %>
-    <p>まだガチャがありません。</p>
-  <% } else { %>
-    <% gachas.forEach(gacha => { %>  <!-- ← ← ここ修正！ -->
+  <% if (gachas && gachas.length > 0) { %>
+    <% gachas.forEach(gacha => { %>
       <div class="gacha-card">
         <h2><%= gacha.name %></h2>
-        <p>反応文言: <%= gacha.plex || 'なし' %></p>
-        <p>チャンネル: <%= gacha.channel || '未設定' %></p>
-        <p>ロール: <%= gacha.role || '未設定' %></p>
+        <p>反応文言: <%= gacha.plex %></p>
+        <p>チャンネル: <%= gacha.channel_id || '未設定' %></p>
+        <p>ロール: <%= gacha.role_id || '未設定' %></p>
 
-        <form method="POST" action="/gacha/<%= guildId %>/edit">
-          <input type="hidden" name="name" value="<%= gacha.name %>">
+        <h3>✏️ 編集</h3>
+        <form method="POST" action="/gacha/<%= guildId %>/<%= gacha.name %>/edit">
           <input type="text" name="editname" placeholder="新しい名前">
           <input type="text" name="plex" placeholder="反応文言">
           <input type="text" name="channel" placeholder="チャンネルID">
           <input type="text" name="role" placeholder="ロールID">
-          <input type="number" name="delete_after_days" placeholder="削除日数">
-          <label><input type="checkbox" name="delete_now" value="true"> 即削除</label>
+          <input type="number" name="delete_after_days" placeholder="削除までの日数">
           <button type="submit">更新</button>
         </form>
+
+        <h3>🎁 アイテム追加</h3>
+        <form method="POST" action="/gacha/<%= guildId %>/<%= gacha.name %>/additem">
+          <input type="text" name="name" placeholder="アイテム名" required>
+          <input type="text" name="rarity" placeholder="レアリティ">
+          <input type="number" step="0.01" name="chance" placeholder="出現確率(%)">
+          <button type="submit">追加</button>
+        </form>
+
+        <% if (gacha.items && gacha.items.length > 0) { %>
+          <h3>📦 登録アイテム</h3>
+          <ul>
+            <% gacha.items.forEach(item => { %>
+              <li>
+                <b><%= item.item_name %></b> 
+                (<%= item.rarity || '---' %>) 
+                - <%= item.chance %>%
+                
+                <form method="POST" action="/gacha/<%= guildId %>/<%= gacha.name %>/edititem/<%= item.item_name %>" style="display:inline;">
+                  <input type="text" name="editname" placeholder="新しい名前">
+                  <input type="text" name="rarity" placeholder="レアリティ">
+                  <input type="number" step="0.01" name="chance" placeholder="確率">
+                  <button type="submit">更新</button>
+                </form>
+
+                <form method="POST" action="/gacha/<%= guildId %>/<%= gacha.name %>/deleteitem/<%= item.item_name %>" style="display:inline;">
+                  <button type="submit" class="danger">削除</button>
+                </form>
+              </li>
+            <% }); %>
+          </ul>
+        <% } else { %>
+          <p>登録アイテムはありません。</p>
+        <% } %>
+
       </div>
     <% }); %>
+  <% } else { %>
+    <p>まだガチャが登録されていません。</p>
   <% } %>
 
-<h3>🎁 アイテム追加</h3>
-<form method="POST" action="/gacha/<%= guildId %>/<%= gacha.name %>/additem">
-  <input type="text" name="name" placeholder="アイテム名" required>
-  <input type="text" name="rarity" placeholder="レアリティ">
-  <input type="number" step="0.01" name="probability" placeholder="出現確率(%)">
-  <button type="submit">追加</button>
-</form>
-
-<h3>🎁 登録アイテム一覧</h3>
-<% if (gacha.items && gacha.items.length > 0) { %>
-  <% gacha.items.forEach(item => { %>
-    <form method="POST" action="/gacha/<%= guildId %>/<%= gacha.name %>/edititem" class="item-form">
-      <input type="hidden" name="id" value="<%= item.id %>">
-      <input type="text" name="name" value="<%= item.name %>" placeholder="アイテム名">
-      <input type="text" name="rarity" value="<%= item.rarity %>" placeholder="レアリティ">
-      <input type="number" step="0.01" name="probability" value="<%= item.probability %>" placeholder="確率(%)">
-      <button type="submit">💾 更新</button>
-      <button type="submit" name="delete_now" value="true" style="background:red;color:white;">🗑 削除</button>
-    </form>
-  <% }) %>
-<% } else { %>
-  <p>まだアイテムがありません。</p>
-<% } %>
-
-  <hr>
-  <h2>➕ 新しいガチャを作成</h2>
-  <form method="POST" action="/gacha/<%= guildId %>/create">
-    <input type="text" name="name" placeholder="ガチャ名" required>
-    <input type="text" name="plex" placeholder="反応文言">
-    <input type="text" name="channel" placeholder="チャンネルID">
-    <input type="text" name="role" placeholder="ロールID">
-    <input type="number" name="delete_after_days" placeholder="削除日数">
-    <button type="submit">作成</button>
-  </form>
 </body>
 </html>
