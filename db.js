@@ -123,7 +123,7 @@ export default {
     return true;
   },
 };
-  },
+
 
   async deleteGacha(guild_id, gacha_name) {
     await pool.query(`DELETE FROM gachas WHERE guild_id=$1 AND name=$2`, [guild_id, gacha_name]);
