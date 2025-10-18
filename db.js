@@ -71,13 +71,14 @@ export default {
   },
 
   // === アイテム関連 ===
-  async getItems(guild_id, gacha_name) {
-    const res = await pool.query(
-      `SELECT * FROM gacha_items WHERE guild_id=$1 AND gacha_name=$2 ORDER BY id ASC`,
-      [guild_id, gacha_name]
-    );
-    return res.rows;
-  },
+async getItems(guild_id, gacha_name) {
+  const res = await pool.query(
+    `SELECT * FROM gacha_items WHERE guild_id=$1 AND gacha_name=$2`,
+    [guild_id, gacha_name]
+  );
+  return res.rows;
+},
+
 
   async addItem(guild_id, gacha_name, item) {
     const res = await pool.query(
