@@ -61,6 +61,24 @@ export default {
     const res = await pool.query(`SELECT * FROM gachas WHERE guild_id=$1`, [guild_id]);
     return res.rows;
   },
+  
+async getGachaByChannelAndPlex(guild_id, channel_id, content) {
+  let query = 'SELECT * FROM gachas WHERE guild_id=$1';
+  let params = [guild_id];
+
+  if (channel_id) {
+    query += ' AND channel_id=$2';
+    params.push(channel_id);
+  }
+
+  if (content) {
+    query += ' AND (plex=$' + (params.length+1) + ' OR name=$' + (params.length+1) + ')';
+    params.push(content);
+  }
+
+  const res = await pool.query(query, params);
+  return res.rows[0];
+}
 
   async getGachaByChannelAndPlex(guild_id, channel_id, content) {
     const res = await pool.query(
