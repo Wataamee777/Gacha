@@ -107,9 +107,17 @@ app.get('/dashboard', checkAuth, (req, res) => {
 
 // 🎰 ガチャ一覧
 app.get('/gacha/:guildId', checkAuth, async (req, res) => {
-  const gachas = (await db.query('SELECT * FROM gachas WHERE guild_id=$1', [req.params.guildId])).rows;
-  res.render('gacha_list', { gachas, user: req.session.user, guildId: req.params.guildId });
+  const guildId = req.params.guildId;
+  const gachas = (await db.query('SELECT * FROM gachas WHERE guild_id=$1', [guildId])).rows;
+
+  // 各ガチャごとに items を取得して紐づける
+  for (const g of gachas) {
+    g.items = await db.getItems(guildId, g.name);
+  }
+
+  res.render('gacha_list', { gachas, user: req.session.user, guildId });
 });
+
 
 // ➕ ガチャ作成
 app.post('/gacha/:guildId/create', checkAuth, async (req, res) => {
