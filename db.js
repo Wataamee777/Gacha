@@ -122,7 +122,6 @@ export default {
     );
     return true;
   },
-};
 
 
   async deleteGacha(guild_id, gacha_name) {
