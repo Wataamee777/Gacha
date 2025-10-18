@@ -129,6 +129,31 @@ app.post('/gacha/:guildId/edit', checkAuth, async (req, res) => {
   res.redirect(`/gacha/${req.params.guildId}`);
 });
 
+// 🎁 アイテム追加
+app.post('/gacha/:guildId/:gachaName/additem', checkAuth, async (req, res) => {
+  const { name, rarity, probability } = req.body;
+  const { guildId, gachaName } = req.params;
+
+  if (!name) return res.status(400).send('Item name is required');
+  await db.addItem(guildId, gachaName, { name, rarity, probability });
+
+  res.redirect(`/gacha/${guildId}`);
+});
+
+// 🎨 アイテム編集
+app.post('/gacha/:guildId/:gachaName/edititem', checkAuth, async (req, res) => {
+  const { id, name, rarity, probability, delete_now } = req.body;
+  const { guildId, gachaName } = req.params;
+
+  if (delete_now) {
+    await db.deleteItem(id);
+  } else {
+    await db.updateItem(id, { name, rarity, probability });
+  }
+
+  res.redirect(`/gacha/${guildId}`);
+});
+
 // 📦 JSONインポート
 app.post('/gacha/:guildId/import', checkAuth, async (req, res) => {
   const data = req.body.json;
