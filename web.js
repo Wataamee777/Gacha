@@ -174,7 +174,7 @@ app.post("/gacha/:guild_id/:gacha_name/deleteitem/:item_name", async (req, res) 
     );
 
     // 成功メッセージを返す or リダイレクト
-    res.redirect(`/gacha/${guild_id}/${gacha_name}`); // ← 一覧ページに戻るとか
+    res.redirect(`/gacha/${guild_id}`); // ← 一覧ページに戻るとか
   } catch (err) {
     console.error(err);
     res.status(500).send("削除に失敗しました。");
