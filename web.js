@@ -100,9 +100,11 @@ app.get('/auth/callback', async (req, res) => {
   }
 });
 
-// 📊 ダッシュボード
-app.get('/dashboard', checkAuth, (req, res) => {
-  res.render('dashboard', { user: req.session.user });
+// サーバー一覧
+app.get("/dashboard", async (req, res) => {
+  const guilds = await getUserGuilds(req.session.token);
+  const botGuilds = guilds.filter(g => g.bot_in); // Botがいるサーバー
+  res.render("dashboard-list", { guilds: botGuilds });
 });
 
 // 🎰 ガチャ一覧
