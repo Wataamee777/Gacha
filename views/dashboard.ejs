@@ -10,7 +10,17 @@
   <div style="text-align:center; margin-top:3rem;">
     <h1>ようこそ <%= user.username %> さん</h1>
     <p>Discord ID: <%= user.id %></p>
-    <a class="btn" href="/gacha/<%= user.id %>">ガチャ管理画面へ</a>
+<h2>管理できるサーバー一覧</h2>
+<ul>
+  <% guilds.forEach(guild => { %>
+    <li>
+      <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" width="32" />
+      <%= guild.name %>
+      <a href="/dashboard/<%= guild.id %>">設定へ</a>
+    </li>
+  <% }) %>
+</ul>
+
   </div>
 </body>
 </html>
