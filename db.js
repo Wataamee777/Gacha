@@ -80,14 +80,6 @@ async getGachaByChannelAndPlex(guild_id, channel_id, content) {
   return res.rows[0];
 }
 
-  async getGachaByChannelAndPlex(guild_id, channel_id, content) {
-    const res = await pool.query(
-      `SELECT * FROM gachas WHERE guild_id=$1 AND ($2 IS NULL OR channel_id=$2) AND ($3=plex OR $3=name)`,
-      [guild_id, channel_id, content]
-    );
-    return res.rows[0];
-  },
-
   // === アイテム関連 ===
 async getItems(guild_id, gacha_name) {
   const res = await pool.query(
