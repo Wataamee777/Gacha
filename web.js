@@ -127,7 +127,7 @@ app.post('/gacha/:guildId/create', checkAuth, async (req, res) => {
 });
 
 // ✏️ ガチャ編集
-app.post('/gacha/:guildId/edit', checkAuth, async (req, res) => {
+app.post('/gacha/:guildId/:gachaName/edit', checkAuth, async (req, res) => {
   const { name, editname, plex, channel, role, delete_after_days, delete_now } = req.body;
   if (delete_now) {
     await db.deleteGacha(req.params.guildId, name);
