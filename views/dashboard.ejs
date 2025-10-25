@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>🎛 ガチャ管理 | <%= guildId %></title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background: #f7f7fb;
+      color: #222;
+    }
+
+    header {
+      background: #5865f2;
+      color: #fff;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    main {
+      max-width: 800px;
+      margin: 2rem auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    input, select {
+      padding: 0.6rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #5865f2;
+      color: white;
+      border: none;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #4752c4;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.5rem;
+    }
+
+    th, td {
+      padding: 0.7rem;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    tr:hover {
+      background: #f4f4ff;
+    }
+
+    a {
+      color: #5865f2;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .delete-btn {
+      background: #f04747;
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .delete-btn:hover {
+      background: #c03434;
+    }
+
+    .small {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🎛 ガチャ管理 - Guild: <%= guildId %></h1>
+    <a href="/dashboard" style="color: white; text-decoration: underline;">← サーバー一覧に戻る</a>
+  </header>
+
+  <main>
+    <h2>🎰 新しいガチャを作成</h2>
+    <form action="/gacha/<%= guildId %>/create" method="POST">
+      <input type="text" name="name" placeholder="ガチャ名（例: 桜ガチャ）" required>
+      <input type="text" name="plex" placeholder="呼び出しキーワード（例: 桜）">
+      <input type="text" name="channel" placeholder="チャンネルID（任意）">
+      <input type="text" name="role" placeholder="ロールID（任意）">
+      <input type="number" name="delete_after_days" placeholder="削除までの日数（任意）">
+      <button type="submit">作成</button>
+    </form>
+
+    <h2>📜 登録済みガチャ一覧</h2>
+
+    <% if (gachas.length === 0) { %>
+      <p>まだガチャは登録されていません。</p>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>ガチャ名</th>
+            <th>Plex</th>
+            <th>チャンネル</th>
+            <th>ロール</th>
+            <th>削除日数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% gachas.forEach(g => { %>
+            <tr>
+              <td><%= g.name %></td>
+              <td><%= g.plex || '-' %></td>
+              <td><%= g.channel_id || '-' %></td>
+              <td><%= g.role_id || '-' %></td>
+              <td><%= g.delete_after_days || '-' %></td>
+              <td>
+                <a href="/gacha/<%= guildId %>/<%= g.name %>">編集</a>
+                <form action="/gacha/<%= guildId %>/<%= g.name %>/delete" method="POST" style="display:inline;">
+                  <button type="submit" class="delete-btn">削除</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </main>
+</body>
+</html>
