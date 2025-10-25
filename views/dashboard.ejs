@@ -2,25 +2,35 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>🎛 サーバー一覧 | Gacha Dashboard</title>
+  <style>
+    body { font-family: sans-serif; background: #f8f8f8; padding: 20px; }
+    h1 { margin-bottom: 16px; }
+    .guild {
+      display: flex; align-items: center; margin-bottom: 12px; padding: 8px;
+      background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; }
+    a { margin-left: auto; background: #4e6ef2; color: #fff; text-decoration: none; padding: 6px 10px; border-radius: 5px; }
+  </style>
 </head>
 <body>
-  <div style="text-align:center; margin-top:3rem;">
-    <h1>ようこそ <%= user.username %> さん</h1>
-    <p>Discord ID: <%= user.id %></p>
-<h2>管理できるサーバー一覧</h2>
-<ul>
-  <% guilds.forEach(guild => { %>
-    <li>
-      <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" width="32" />
-      <%= guild.name %>
-      <a href="/dashboard/<%= guild.id %>">設定へ</a>
-    </li>
-  <% }) %>
-</ul>
+  <h1>管理できるサーバー一覧</h1>
 
-  </div>
+  <% if (guilds.length === 0) { %>
+    <p>管理権限を持つサーバーがありません。</p>
+  <% } else { %>
+    <% guilds.forEach(g => { %>
+      <div class="guild">
+        <% if (g.icon) { %>
+          <img src="https://cdn.discordapp.com/icons/<%= g.id %>/<%= g.icon %>.png" alt="">
+        <% } else { %>
+          <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="">
+        <% } %>
+        <span><%= g.name %></span>
+        <a href="/dashboard/<%= g.id %>">管理ページへ</a>
+      </div>
+    <% }) %>
+  <% } %>
 </body>
 </html>
