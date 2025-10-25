@@ -15,7 +15,7 @@ app.use(express.json());
 app.set('view engine', 'ejs');
 app.use('/static', express.static('public'));
 
-// ---------- Postgres セッションストア ----------
+// ---------- Postgresセッションストア ----------
 const PgStore = pgSession(session);
 app.use(
   session({
@@ -27,12 +27,12 @@ app.use(
     secret: process.env.SESSION_SECRET || 'supersecret',
     resave: false,
     saveUninitialized: false,
-    proxy: true, // ← Renderでは必須！
+    proxy: true,
     cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7日
-      secure: true,                    // HTTPS限定
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7日間
+      secure: true,
       httpOnly: true,
-      sameSite: "none",                // ← OAuth通過時にクッキー削除されないため必須！
+      sameSite: 'none',
     },
   })
 );
@@ -50,6 +50,15 @@ function checkAuth(req, res, next) {
   next();
 }
 
+// ---------- Discord API関数 ----------
+async function getUserGuilds(token) {
+  const res = await fetch('https://discord.com/api/users/@me/guilds', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return [];
+  return await res.json();
+}
+
 // ---------- Routes ----------
 
 // 🏠 ホーム
@@ -58,9 +67,7 @@ app.get('/', (req, res) => {
 });
 
 // 🔑 Discordログイン
-app.get('/auth/login', (req, res) => {
-  res.redirect(discordAuthUrl);
-});
+app.get('/auth/login', (req, res) => res.redirect(discordAuthUrl));
 
 // 🔁 Discordコールバック
 app.get('/auth/callback', async (req, res) => {
@@ -93,6 +100,7 @@ app.get('/auth/callback', async (req, res) => {
     const user = await userRes.json();
 
     req.session.user = user;
+    req.session.token = tokenData.access_token;
     res.redirect('/dashboard');
   } catch (err) {
     console.error('OAuth Error:', err);
@@ -100,104 +108,66 @@ app.get('/auth/callback', async (req, res) => {
   }
 });
 
-// サーバー一覧
-app.get("/dashboard", async (req, res) => {
+// 📋 サーバー一覧（Bot導入済みギルドのみ）
+app.get('/dashboard', checkAuth, async (req, res) => {
   const guilds = await getUserGuilds(req.session.token);
-  const botGuilds = guilds.filter(g => g.bot_in); // Botがいるサーバー
-  res.render("dashboard-list", { guilds: botGuilds });
+  const botGuilds = guilds.filter((g) => (g.permissions & 0x20) !== 0); // 管理権限持ちのみ
+  res.render('dashboard-list', { guilds: botGuilds, user: req.session.user });
 });
 
-// 🎰 ガチャ一覧
-app.get('/gacha/:guildId', checkAuth, async (req, res) => {
+// 🎛️ サーバー個別ダッシュボード
+app.get('/dashboard/:guildId', checkAuth, async (req, res) => {
   const guildId = req.params.guildId;
   const gachas = (await db.query('SELECT * FROM gachas WHERE guild_id=$1', [guildId])).rows;
 
-  // 各ガチャごとに items を取得して紐づける
-  for (const g of gachas) {
-    g.items = await db.getItems(guildId, g.name);
-  }
-
-  res.render('gacha_list', { gachas, user: req.session.user, guildId });
+  for (const g of gachas) g.items = await db.getItems(guildId, g.name);
+  res.render('dashboard', { guildId, gachas, user: req.session.user });
 });
 
-
-// ➕ ガチャ作成
+// 🎰 ガチャ作成
 app.post('/gacha/:guildId/create', checkAuth, async (req, res) => {
   const { name, plex, channel, role, delete_after_days } = req.body;
   await db.addGacha(req.params.guildId, { name, plex, channel, role, delete_after_days });
-  res.redirect(`/gacha/${req.params.guildId}`);
+  res.redirect(`/dashboard/${req.params.guildId}`);
 });
 
 // ✏️ ガチャ編集
 app.post('/gacha/:guildId/:gachaName/edit', checkAuth, async (req, res) => {
-  const { name, editname, plex, channel, role, delete_after_days, delete_now } = req.body;
+  const { editname, plex, channel, role, delete_after_days, delete_now } = req.body;
   if (delete_now) {
-    await db.deleteGacha(req.params.guildId, name);
+    await db.deleteGacha(req.params.guildId, req.params.gachaName);
   } else {
-    await db.updateGacha(req.params.guildId, name, { editname, plex, channel, role, delete_after_days });
+    await db.updateGacha(req.params.guildId, req.params.gachaName, {
+      editname,
+      plex,
+      channel,
+      role,
+      delete_after_days,
+    });
   }
-  res.redirect(`/gacha/${req.params.guildId}`);
+  res.redirect(`/dashboard/${req.params.guildId}`);
 });
 
 // 🎁 アイテム追加
 app.post('/gacha/:guildId/:gachaName/additem', checkAuth, async (req, res) => {
   const { name, rarity, probability } = req.body;
-  const { guildId, gachaName } = req.params;
-
-  if (!name) return res.status(400).send('Item name is required');
-  await db.addItem(guildId, gachaName, { name, rarity, probability });
-
-  res.redirect(`/gacha/${guildId}`);
+  await db.addItem(req.params.guildId, req.params.gachaName, { name, rarity, probability });
+  res.redirect(`/dashboard/${req.params.guildId}`);
 });
 
-// ✏️ アイテム編集
+// ✏️ アイテム編集・削除
 app.post('/gacha/:guildId/:gachaName/edititem/:itemName', checkAuth, async (req, res) => {
-  const { guildId, gachaName, itemName } = req.params;
   const { new_name, rarity, chance, delete_now } = req.body;
-
   if (delete_now) {
-    await db.deleteItem(guildId, gachaName, itemName);
+    await db.deleteItem(req.params.guildId, req.params.gachaName, req.params.itemName);
   } else {
-    await db.updateItem(guildId, gachaName, itemName, { new_name, rarity, chance });
+    await db.updateItem(req.params.guildId, req.params.gachaName, req.params.itemName, {
+      new_name,
+      rarity,
+      chance,
+    });
   }
-
-  res.redirect(`/gacha/${guildId}`);
-});
-
-// ===== アイテム削除 =====
-app.post("/gacha/:guild_id/:gacha_name/deleteitem/:item_name", async (req, res) => {
-  const { guild_id, gacha_name, item_name } = req.params;
-
-  try {
-    // DB削除
-    await db.query(
-      `DELETE FROM gacha_items WHERE guild_id=$1 AND gacha_name=$2 AND item_name=$3`,
-      [guild_id, gacha_name, item_name]
-    );
-
-    // 成功メッセージを返す or リダイレクト
-    res.redirect(`/gacha/${guild_id}`); // ← 一覧ページに戻るとか
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("削除に失敗しました。");
-  }
-});
-
-// 📦 JSONインポート
-app.post('/gacha/:guildId/import', checkAuth, async (req, res) => {
-  const data = req.body.json;
-  for (const g of data) {
-    await db.addGacha(req.params.guildId, g);
-    for (const item of g.items || []) await db.addItem(req.params.guildId, g.name, item);
-  }
-  res.redirect(`/gacha/${req.params.guildId}`);
-});
-
-// 💾 JSONエクスポート
-app.get('/gacha/:guildId/export', checkAuth, async (req, res) => {
-  const gachas = (await db.query('SELECT * FROM gachas WHERE guild_id=$1', [req.params.guildId])).rows;
-  for (const g of gachas) g.items = await db.getItems(req.params.guildId, g.name);
-  res.json(gachas);
+  res.redirect(`/dashboard/${req.params.guildId}`);
 });
 
 // 🚪 ログアウト
@@ -205,6 +175,6 @@ app.get('/auth/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-// ---------- Start ----------
+// ---------- 起動 ----------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🌐 Web管理画面起動: ${PORT}`));
