@@ -112,7 +112,7 @@ app.get('/auth/callback', async (req, res) => {
 app.get('/dashboard', checkAuth, async (req, res) => {
   const guilds = await getUserGuilds(req.session.token);
   const botGuilds = guilds.filter((g) => (g.permissions & 0x20) !== 0); // 管理権限持ちのみ
-  res.render('dashboard-list', { guilds: botGuilds, user: req.session.user });
+  res.render('dashboardlist', { guilds: botGuilds, user: req.session.user });
 });
 
 // 🎛️ サーバー個別ダッシュボード
