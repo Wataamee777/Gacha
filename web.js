@@ -109,10 +109,33 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 // 📋 サーバー一覧（Bot導入済みギルドのみ）
+// 📋 サーバー一覧（Bot導入済み + 管理権限あり）
 app.get('/dashboard', checkAuth, async (req, res) => {
-  const guilds = await getUserGuilds(req.session.token);
-  const botGuilds = guilds.filter((g) => (g.permissions & 0x20) !== 0); // 管理権限持ちのみ
-  res.render('dashboard_list', { guilds: botGuilds, user: req.session.user });
+  try {
+    // ユーザーのサーバー一覧を取得
+    const userGuilds = await getUserGuilds(req.session.token);
+
+    // Botが導入されているサーバー一覧を取得
+    const botGuildsRes = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+      headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` },
+    });
+    const botGuilds = await botGuildsRes.json();
+
+    // Bot導入済み + 管理権限持ちサーバーのみ抽出
+    const managedGuilds = userGuilds.filter((ug) => {
+      const botIn = botGuilds.some((bg) => bg.id === ug.id);
+      const hasManagePerm = (ug.permissions & 0x20) !== 0; // MANAGE_GUILD 権限
+      return botIn && hasManagePerm;
+    });
+
+    res.render('dashboard-list', {
+      guilds: managedGuilds,
+      user: req.session.user,
+    });
+  } catch (err) {
+    console.error('Dashboard Error:', err);
+    res.status(500).send('Failed to load dashboard list.');
+  }
 });
 
 // 🎛️ サーバー個別ダッシュボード
