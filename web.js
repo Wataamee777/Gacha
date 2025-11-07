@@ -8,6 +8,7 @@ import db from './db.js';
 import 'dotenv/config';
 
 const app = express();
+app.get("/healthz", (req, res) => res.status(200).send("OK"));
 
 // ---------- Middleware ----------
 app.use(express.urlencoded({ extended: true }));
