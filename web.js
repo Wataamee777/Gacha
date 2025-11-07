@@ -120,7 +120,7 @@ app.get('/dashboard', checkAuth, async (req, res) => {
 
     // Bot 導入済みチェック（BotトークンでOK）
     const botGuildsRes = await fetch('https://discord.com/api/v10/users/@me/guilds', {
-      headers: { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` },
+      headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
     });
     const botGuilds = await botGuildsRes.json();
     console.log('Bot guilds:', botGuilds);
