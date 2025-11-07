@@ -172,3 +172,5 @@ export default {
     return true;
   },
 };
+// db.js の末尾
+export { pool };
