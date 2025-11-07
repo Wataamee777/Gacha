@@ -192,6 +192,58 @@
         </tbody>
       </table>
     <% } %>
+<h2>🎁 アイテム一覧 / 管理</h2>
+
+<% gachas.forEach(g => { %>
+  <h3>ガチャ: <%= g.name %></h3>
+
+  <% if (g.items && g.items.length > 0) { %>
+    <table>
+      <thead>
+        <tr>
+          <th>アイテム名</th>
+          <th>レア度</th>
+          <th>確率(%)</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% g.items.forEach(it => { %>
+          <tr>
+            <td data-label="アイテム名"><%= it.item_name %></td>
+            <td data-label="レア度"><%= it.rarity %></td>
+            <td data-label="確率"><%= it.chance %></td>
+            <td data-label="操作">
+              <!-- 編集フォームはモーダルでもいいけど簡易版 -->
+              <form action="/gacha/<%= guildId %>/<%= g.name %>/edititem/<%= it.item_name %>" method="POST" style="display:inline;">
+                <input type="text" name="new_name" placeholder="新しい名前">
+                <input type="text" name="rarity" placeholder="新レア度">
+                <input type="number" name="chance" placeholder="新確率">
+                <button type="submit" class="edit-btn">✏️ 編集</button>
+              </form>
+              <form action="/gacha/<%= guildId %>/<%= g.name %>/edititem/<%= it.item_name %>" method="POST" style="display:inline;">
+                <input type="hidden" name="delete_now" value="true">
+                <button type="submit" class="delete-btn" onclick="return confirm('削除してもいいですか？')">🗑️ 削除</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <p>まだアイテムはありません。</p>
+  <% } %>
+
+  <!-- アイテム追加フォーム -->
+  <form action="/gacha/<%= guildId %>/<%= g.name %>/additem" method="POST">
+    <input type="text" name="name" placeholder="アイテム名" required>
+    <input type="text" name="rarity" placeholder="レア度" required>
+    <input type="number" name="probability" placeholder="確率(%)" required>
+    <button type="submit">＋ アイテム追加</button>
+  </form>
+
+  <hr>
+<% }) %>
 
     <!-- 編集フォーム（モーダル風） -->
     <div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
