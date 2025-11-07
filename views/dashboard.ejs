@@ -149,7 +149,7 @@
               <td><%= g.role_id || '-' %></td>
               <td><%= g.delete_after_days || '-' %></td>
               <td>
-                <a href="/gacha/<%= guildId %>/<%= g.name %>">編集</a>
+                <a href="/gacha/<%= guildId %>/<%= g.name %>/edit">編集</a>
                 <form action="/gacha/<%= guildId %>/<%= g.name %>/delete" method="POST" style="display:inline;">
                   <button type="submit" class="delete-btn">削除</button>
                 </form>
