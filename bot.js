@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 import 'dotenv/config';
 
-const { DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID } = process.env;
+const { DISCORD_TOKEN, DISCORD_CLIENT_ID } = process.env;
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
