@@ -9,11 +9,16 @@ import {
   ButtonStyle 
 } from 'discord.js';
 import 'dotenv/config';
+import db from './db.js';
 
 const { DISCORD_TOKEN, DISCORD_CLIENT_ID } = process.env;
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+  intents: [
+    GatewayIntentBits.Guilds,           // サーバー情報
+    GatewayIntentBits.GuildMessages,    // サーバー内のメッセージ取得
+    GatewayIntentBits.MessageContent    // メッセージ内容取得（必須）
+  ]
 });
 
 // =============================
@@ -67,5 +72,42 @@ client.on('interactionCreate', async (interaction) => {
     });
   }
 });
+
+client.on('messageCreate', async (msg) => {
+  if (msg.author.bot) return;
+  if (!msg.guild) return;
+
+  // member.roles.cache を渡す
+  const gacha = await db.getGachaByChannelAndPlex(
+    msg.guild.id,
+    msg.channel.id,
+    msg.content,
+    msg.member.roles.cache
+  );
+  if (!gacha) return;
+
+  // roll 制限（例: 30秒毎に同じガチャは1回だけ）
+  const lastUsed = gacha.last_used ? new Date(gacha.last_used) : null;
+  if (lastUsed && Date.now() - lastUsed.getTime() < 30_000) return;
+
+  // 使用時間更新
+  await db.query(`UPDATE gachas SET last_used=NOW() WHERE id=$1`, [gacha.id]);
+
+  // アイテム取得
+  const items = await db.getItems(gacha.guild_id, gacha.name);
+
+  // 確率抽選
+  const roll = Math.random();
+  let cumulative = 0;
+  const result = items.find(i => {
+    cumulative += i.chance / 100; // chance が % なら 0-1 に変換
+    return roll < cumulative;
+  });
+
+  if (result) {
+    msg.reply(`🎉 ${msg.author.username} が **${result.item_name}**（${result.rarity}）を引いた！`);
+  }
+});
+
 
 client.login(DISCORD_BOT_TOKEN);
