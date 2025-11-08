@@ -1,58 +1,71 @@
-// bot.js
-import { Client, GatewayIntentBits } from 'discord.js';
-import db from './db.js';
+import { 
+  Client, 
+  GatewayIntentBits, 
+  REST, 
+  Routes, 
+  SlashCommandBuilder, 
+  ActionRowBuilder, 
+  ButtonBuilder, 
+  ButtonStyle 
+} from 'discord.js';
 import 'dotenv/config';
-import './web.js';
+
+const { DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID } = process.env;
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+  intents: [GatewayIntentBits.Guilds]
 });
 
-client.once('ready', () => {
-  console.log(`${client.user.tag} がログインしました！`);
-});
+// =============================
+// コマンド定義
+// =============================
+const commands = [
+  new SlashCommandBuilder()
+    .setName('gachasite')
+    .setDescription('公式サイトを開く')
+].map(c => c.toJSON());
 
-// メッセージ反応型ガチャ
-client.on('messageCreate', async (msg) => {
-  if (msg.author.bot) return;
+// =============================
+// コマンド登録
+// =============================
+const rest = new REST({ version: '10' }).setToken(DISCORD_BOT_TOKEN);
 
+(async () => {
   try {
-    // ID は文字列で統一
-    const guildId = msg.guild.id.toString();
-    const channelId = msg.channel.id.toString();
-    const content = msg.content.trim();
-
-    // ガチャ取得
-    const gacha = await db.getGachaByChannelAndPlex(guildId, channelId, content);
-    if (!gacha) return;
-
-    // 使用時間更新
-    await db.query(`UPDATE gachas SET last_used=NOW() WHERE id=$1`, [gacha.id]);
-
-    // アイテム取得
-    const items = await db.getItems(guildId, gacha.name);
-    if (items.length === 0) return;
-
-    // ランダム抽選（確率が 0〜100 の整数の場合）
-    const roll = Math.random();
-    let cumulative = 0;
-    const result = items.find((i) => {
-      cumulative += i.chance / 100;
-      return roll < cumulative;
-    }); 
-
-    if (result) {
-      await msg.reply(
-        `🎉 ${msg.author.username} が **${result.item_name}**（${result.rarity}）を引いた！`
-      );
-    }
+    console.log('command regist now...');
+    await rest.put(
+      Routes.applicationGuildCommands(DISCORD_CLIENT_ID),
+      { body: commands }
+    );
+    console.log('✅ コマンド登録完了');
   } catch (err) {
-    console.error('ガチャエラー:', err);
+    console.error('❌ コマンド登録失敗:', err);
+  }
+})();
+
+// =============================
+// Bot起動＆コマンド反応
+// =============================
+client.once('ready', () => {
+  console.log(`🤖 ログイン完了: ${client.user.tag}`);
+});
+
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName === 'gachasite') {
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('公式ガチャサイトを開く')
+        .setStyle(ButtonStyle.Link)
+        .setURL('https://gacha.sakurahp.f5.si')
+    );
+
+    await interaction.reply({
+      content: 'こちらから公式ガチャサイトを開けます👇',
+      components: [row],
+      ephemeral: true
+    });
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(DISCORD_BOT_TOKEN);
