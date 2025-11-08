@@ -1,36 +1,57 @@
-import { Client, GatewayIntentBits, Collection } from 'discord.js';
-import { gachaCommand } from './commands/gacha.js';
+// bot.js
+import { Client, GatewayIntentBits } from 'discord.js';
 import db from './db.js';
 import 'dotenv/config';
-import './web.js';
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-client.commands = new Collection();
-client.commands.set(gachaCommand.data.name, gachaCommand);
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  const command = client.commands.get(interaction.commandName);
-  if (command) await command.execute(interaction);
+client.once('ready', () => {
+  console.log(`${client.user.tag} がログインしました！`);
 });
 
 // メッセージ反応型ガチャ
 client.on('messageCreate', async (msg) => {
   if (msg.author.bot) return;
-  const gacha = await db.getGachaByChannelAndPlex(msg.guild.id, msg.channel.id, msg.content);
-  if (!gacha) return;
 
-  await db.query(`UPDATE gachas SET last_used=NOW() WHERE id=$1`, [gacha.id]);
-  const items = await db.getItems(gacha.guild_id, gacha.name);
+  try {
+    // ID は文字列で統一
+    const guildId = msg.guild.id.toString();
+    const channelId = msg.channel.id.toString();
+    const content = msg.content.trim();
 
-  const roll = Math.random();
-  let cumulative = 0;
-  const result = items.find(i => {
-    cumulative += i.chance;
-    return roll < cumulative;
-  });
+    // ガチャ取得
+    const gacha = await db.getGachaByChannelAndPlex(guildId, channelId, content);
+    if (!gacha) return;
 
-  if (result) msg.reply(`🎉 ${msg.author.username} が **${result.name}**（${result.rarity}）を引いた！`);
+    // 使用時間更新
+    await db.query(`UPDATE gachas SET last_used=NOW() WHERE id=$1`, [gacha.id]);
+
+    // アイテム取得
+    const items = await db.getItems(guildId, gacha.name);
+    if (items.length === 0) return;
+
+    // ランダム抽選（確率が 0〜100 の整数の場合）
+    const roll = Math.random();
+    let cumulative = 0;
+    const result = items.find((i) => {
+      cumulative += i.chance / 100;
+      return roll < cumulative;
+    });
+
+    if (result) {
+      await msg.reply(
+        `🎉 ${msg.author.username} が **${result.item_name}**（${result.rarity}）を引いた！`
+      );
+    }
+  } catch (err) {
+    console.error('ガチャエラー:', err);
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN);
