@@ -86,24 +86,33 @@ export default {
   },
 
   // === チャンネルとPlex一致検索 ===
-  async getGachaByChannelAndPlex(guild_id, channel_id, content) {
-    let query = `SELECT * FROM gachas WHERE guild_id=$1`;
-    const params = [guild_id];
+async getGachaByChannelAndPlex(guild_id, channel_id, content, memberRoles) {
+  let query = `SELECT * FROM gachas WHERE guild_id=$1`;
+  const params = [guild_id];
 
-    if (channel_id) {
-      query += ` AND channel_id=$${params.length + 1}`;
-      params.push(channel_id);
-    }
+  // チャンネル制限
+  if (channel_id) {
+    query += ` AND (channel_id IS NULL OR channel_id=$${params.length + 1})`;
+    params.push(channel_id);
+  }
 
-    if (content) {
-      query += ` AND (plex=$${params.length + 1} OR name=$${params.length + 1})`;
-      params.push(content);
-    }
+  // Plex or Name 判定
+  if (content) {
+    query += ` AND (COALESCE(plex, name)=$${params.length + 1})`;
+    params.push(content);
+  }
 
-    const res = await safeQuery(query, params);
-    return res.rows[0];
-  },
+  const res = await safeQuery(query, params);
 
+  // role制限チェック
+  const filtered = res.rows.filter(g => {
+    if (!g.role_id) return true; // nullなら誰でもOK
+    return memberRoles.has(g.role_id); // 持ってればOK
+  });
+
+  return filtered[0] || null;
+},
+  
   // === アイテム一覧 ===
   async getItems(guild_id, gacha_name) {
     const res = await safeQuery(
