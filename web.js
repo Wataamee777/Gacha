@@ -131,7 +131,7 @@ app.get('/dashboard', checkAuth, async (req, res) => {
       return botIn && hasManagePerm;
     });
 
-    res.render('dashboard-list', { guilds: managedGuilds, user: req.session.user });
+    res.render('dashboard_list', { guilds: managedGuilds, user: req.session.user });
   } catch (err) {
     console.error('Dashboard Error:', err);
     res.status(500).send('Failed to load dashboard list.');
