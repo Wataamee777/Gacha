@@ -2,6 +2,7 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import db from './db.js';
 import 'dotenv/config';
+import './web.js';
 
 const client = new Client({
   intents: [
@@ -42,7 +43,7 @@ client.on('messageCreate', async (msg) => {
     const result = items.find((i) => {
       cumulative += i.chance / 100;
       return roll < cumulative;
-    });
+    }); 
 
     if (result) {
       await msg.reply(
